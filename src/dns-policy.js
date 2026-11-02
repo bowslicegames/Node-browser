@@ -1,8 +1,9 @@
 import { lookup } from "node:dns/promises";
 import ipaddr from "ipaddr.js";
+import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 
-// Reject the entire hostname if any DNS answer is not globally routable.
-// Wisp JS caches this selected address and uses the same address for the socket.
+// Reject a hostname if any DNS answer is not globally routable.
+// Wisp caches the selected answer and uses the same address for its socket.
 export async function lookupPublicAddress(hostname) {
   const answers = await lookup(hostname, { all: true, verbatim: true });
   if (!answers.length) throw new Error("Hostname did not resolve.");
@@ -16,3 +17,5 @@ export async function lookupPublicAddress(hostname) {
 
   return answers[0].address;
 }
+
+wisp.options.dns_method = lookupPublicAddress;
