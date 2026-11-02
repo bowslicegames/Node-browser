@@ -5,7 +5,7 @@ import { hostname } from "node:os";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 import { epoxyPath } from "@mercuryworkshop/epoxy-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
-import wisp from "wisp-server-node";
+import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 
 const PORT = Number(process.env.PORT || 3000);
 const PASSWORD = process.env.ACCESS_PASSWORD;
@@ -22,6 +22,18 @@ if (!SECRET || SECRET.length < 32) {
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   throw new Error("PORT must be a valid TCP port.");
 }
+
+// Wisp destination restrictions: public HTTP(S) only.
+// DNS is resolved and the resolved address is checked before the socket is opened.
+wisp.options.allow_private_ips = false;
+wisp.options.allow_loopback_ips = false;
+wisp.options.allow_direct_ip = false;
+wisp.options.allow_udp_streams = false;
+wisp.options.allow_tcp_streams = true;
+wisp.options.port_whitelist = [80, 443];
+wisp.options.stream_limit_total = 64;
+wisp.options.stream_limit_per_host = 12;
+wisp.options.dns_result_order = "ipv4first";
 
 const app = express();
 app.disable("x-powered-by");
@@ -46,7 +58,9 @@ function validSession(req) {
   const raw = req.headers.cookie || "";
   const item = raw.split(";").map(v => v.trim()).find(v => v.startsWith(COOKIE + "="));
   if (!item) return false;
-  const token = decodeURIComponent(item.slice(COOKIE.length + 1));
+  let token;
+  try { token = decodeURIComponent(item.slice(COOKIE.length + 1)); }
+  catch { return false; }
   const parts = token.split(".");
   if (parts.length !== 2 || !safeEqual(sign(parts[0]), parts[1])) return false;
   try {
@@ -94,7 +108,6 @@ app.post("/api/logout", requireAuth, (_req, res) => {
 });
 app.get("/api/session", (req, res) => res.json({ authenticated: validSession(req) }));
 
-// Every application and proxy asset is private: this is not an anonymous public proxy.
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   if (!validSession(req)) {
