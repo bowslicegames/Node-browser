@@ -4,7 +4,7 @@ import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import wisp from "wisp-server-node";
+import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 import { epoxyPath } from "@mercuryworkshop/epoxy-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
@@ -24,6 +24,22 @@ if (!sessionSecret || sessionSecret.length < 32) {
   console.error("SESSION_SECRET must be at least 32 characters (or use a 32+ character ACCESS_PASSWORD).");
   process.exit(1);
 }
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  console.error("PORT must be a valid TCP port.");
+  process.exit(1);
+}
+
+// Wisp destination policy: public HTTP(S) destinations only.
+// Wisp JS checks resolved addresses before connecting and reuses its DNS cache for the socket.
+wisp.options.allow_private_ips = false;
+wisp.options.allow_loopback_ips = false;
+wisp.options.allow_direct_ip = false;
+wisp.options.allow_udp_streams = false;
+wisp.options.allow_tcp_streams = true;
+wisp.options.port_whitelist = [80, 443];
+wisp.options.stream_limit_total = 64;
+wisp.options.stream_limit_per_host = 12;
+wisp.options.dns_result_order = "ipv4first";
 
 const app = express();
 const server = createServer(app);
@@ -51,14 +67,19 @@ function safeEqual(a, b) {
 function makeSession() {
   const expires = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
   const signature = createHmac("sha256", sessionSecret).update(String(expires)).digest("hex");
-  return `${expires}.${signature}`;
+  return expires + "." + signature;
 }
 
 function validSession(req) {
   const raw = req.headers.cookie || "";
   const cookie = raw.split(";").map((part) => part.trim()).find((part) => part.startsWith("nb_session="));
   if (!cookie) return false;
-  const token = decodeURIComponent(cookie.slice("nb_session=".length));
+  let token;
+  try {
+    token = decodeURIComponent(cookie.slice("nb_session=".length));
+  } catch {
+    return false;
+  }
   const [expiresText, signature] = token.split(".");
   const expires = Number(expiresText);
   if (!Number.isSafeInteger(expires) || expires <= Math.floor(Date.now() / 1000) || !signature) return false;
@@ -67,7 +88,7 @@ function validSession(req) {
 }
 
 app.post("/api/login", (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const ip = req.socket.remoteAddress || "unknown";
   const now = Date.now();
   const attempts = loginAttempts.get(ip) || { count: 0, resetAt: now + 10 * 60 * 1000 };
   if (attempts.resetAt <= now) {
@@ -83,16 +104,20 @@ app.post("/api/login", (req, res) => {
   }
 
   loginAttempts.delete(ip);
-  res.setHeader("Set-Cookie", `nb_session=${encodeURIComponent(makeSession())}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_SECONDS}`);
+  res.setHeader("Set-Cookie", "nb_session=" + encodeURIComponent(makeSession()) +
+    "; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=" + SESSION_SECONDS);
   return res.json({ ok: true });
 });
 
-app.post("/api/logout", (req, res) => {
+app.post("/api/logout", (_req, res) => {
   res.setHeader("Set-Cookie", "nb_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0");
   res.json({ ok: true });
 });
 
-app.get("/login", (_req, res) => res.sendFile(resolve(publicPath, "login.html")));
+app.get("/login", (req, res) => {
+  if (validSession(req)) return res.redirect("/");
+  return res.sendFile(resolve(publicPath, "login.html"));
+});
 
 app.use((req, res, next) => {
   if (validSession(req)) return next();
@@ -122,8 +147,16 @@ server.on("upgrade", (req, socket, head) => {
   wisp.routeRequest(req, socket, head);
 });
 
+const cleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of loginAttempts) {
+    if (record.resetAt <= now) loginAttempts.delete(ip);
+  }
+}, 60_000);
+cleanupTimer.unref();
+
 server.listen(port, "0.0.0.0", () => {
-  console.log(`Node Browser listening on port ${port} (${hostname()})`);
+  console.log("Node Browser listening on port " + port + " (" + hostname() + ")");
 });
 
 function shutdown() {
