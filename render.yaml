@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: node-browser
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: ACCESS_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
