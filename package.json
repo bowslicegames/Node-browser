@@ -5,8 +5,8 @@
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
-    "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check public/app.js"
+    "start": "node --import ./src/dns-policy.js src/server.js",
+    "check": "node --check src/server.js && node --check src/dns-policy.js && node --check public/app.js"
   },
   "dependencies": {
     "@mercuryworkshop/bare-mux": "^2.1.8",
