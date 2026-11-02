@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090d18">
+  <title>Node Browser</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/baremux/index.js"></script>
+  <script src="/uv/uv.bundle.js"></script>
+  <script src="/uv/uv.config.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/" aria-label="Node Browser home"><span class="brand-icon">N</span><span>Node Browser</span></a>
+    <div class="top-actions"><span class="secure"><i></i> Private session</span><button id="logout" class="icon-button" title="Sign out" aria-label="Sign out">↗</button></div>
+  </header>
+  <main>
+    <section class="welcome" id="welcome">
+      <div class="eyebrow">YOUR WINDOW TO THE WEB</div>
+      <h1>Explore without<br><span>the clutter.</span></h1>
+      <p class="sub">A browser-style web experience, powered by your own Node server.</p>
+      <form id="browser-form" class="searchbar">
+        <span class="search-icon">⌕</span>
+        <input id="address" type="text" placeholder="Search or enter a website address" autocomplete="url" autocapitalize="none" spellcheck="false" required>
+        <button type="submit">Go <span>↗</span></button>
+      </form>
+      <div class="quick-links">
+        <button data-url="https://www.wikipedia.org/">Wikipedia</button>
+        <button data-url="https://example.com/">Example</button>
+        <button data-url="https://developer.mozilla.org/">MDN</button>
+      </div>
+      <p class="hint" id="status" role="status">Enter a web address or search term to get started.</p>
+    </section>
+    <section class="browser" id="browser" hidden>
+      <div class="browser-toolbar">
+        <button id="back" class="nav-button" title="Back">←</button>
+        <button id="forward" class="nav-button" title="Forward">→</button>
+        <button id="reload" class="nav-button" title="Reload">↻</button>
+        <button id="home" class="nav-button" title="Home">⌂</button>
+        <form id="nav-form" class="nav-address"><input id="nav-address" aria-label="Address" autocomplete="url" autocapitalize="none" spellcheck="false"><button type="submit">Go</button></form>
+        <button id="new-window" class="nav-button" title="Open home screen">＋</button>
+      </div>
+      <div class="frame-wrap"><iframe id="uv-frame" title="Web page" referrerpolicy="no-referrer"></iframe></div>
+    </section>
+  </main>
+  <footer><span>Node Browser</span><span>Powered by Ultraviolet · <a href="https://github.com/bowslicegames/Node-browser" target="_blank" rel="noreferrer">Source code</a></span></footer>
+  <script src="/register-sw.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
