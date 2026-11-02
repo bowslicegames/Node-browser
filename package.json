@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
-  "scripts": { "start": "node server.js", "check": "node --check server.js" },
+  "scripts": { "start": "node server.js", "check": "node --check server.js && node --check public/browser.js" },
   "dependencies": {
     "@mercuryworkshop/bare-mux": "^2.1.8",
     "@mercuryworkshop/epoxy-transport": "2.1.28",
+    "@mercuryworkshop/wisp-js": "0.5.2",
     "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
-    "express": "^5.2.1",
-    "wisp-server-node": "1.1.7"
+    "express": "^5.2.1"
   }
 }
